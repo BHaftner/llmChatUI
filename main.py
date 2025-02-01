@@ -4,7 +4,6 @@ import json
 import threading
 import requests
 import ctypes
-import re
 
 tk_title = "Chat-Bot"
 
@@ -400,6 +399,19 @@ def send_message(event=None):
     """Handle message submission"""
     global response_position
     message = entry.get().strip()
+
+    # Handle "cls" command to clear chat
+    if message.lower() == "cls":
+        T.configure(state=NORMAL)
+        T.delete('1.0', END)  # Clear all chat content
+        T.configure(state=DISABLED)
+        entry.delete(0, END)  # Clear input field
+        response_position = None
+        # Reset buffered chunks if exists
+        if 'buffered_chunks' in globals():
+            global buffered_chunks
+            buffered_chunks = []
+        return  # Exit without further processing
 
     if message:
         entry.delete(0, END)
