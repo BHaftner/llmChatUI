@@ -17,7 +17,7 @@ OLLAMA_MODEL = "deepseek-r1:14b"
 # OLLAMA_MODEL = "llama3.1:8b"
 
 
-def launch_ollama():
+def load_ollama_model():
     try:
         launchResponse = requests.post(
             'http://localhost:11434/api/generate',
@@ -30,7 +30,7 @@ def launch_ollama():
         print(f"Exception occurred: {e}")
 
 
-threading.Thread(target=launch_ollama, daemon=True).start()
+threading.Thread(target=load_ollama_model, daemon=True).start()
 
 # =====================
 # Window UI Code
@@ -68,12 +68,29 @@ def set_appwindow(mainWindow):
     GWL_EXSTYLE = -20
     WS_EX_APPWINDOW = 0x00040000
     WS_EX_TOOLWINDOW = 0x00000080
+
     hwnd = windll.user32.GetParent(mainWindow.winfo_id())
+
+    # Withdraw first to prevent flickering
+    mainWindow.wm_withdraw()
+
+    # Get current style
     stylew = windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+
+    # Modify styles
     stylew = stylew & ~WS_EX_TOOLWINDOW
     stylew = stylew | WS_EX_APPWINDOW
-    res = windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, stylew)
-    mainWindow.wm_withdraw()
+    windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, stylew)
+
+    # Force Windows to update window frame
+    SWP_NOMOVE = 0x0002
+    SWP_NOSIZE = 0x0001
+    SWP_NOZORDER = 0x0004
+    SWP_FRAMECHANGED = 0x0020
+    windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0,
+                               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED)
+
+    # Re-show window with updated styles
     mainWindow.after(10, lambda: mainWindow.wm_deiconify())
 
 
@@ -214,7 +231,7 @@ resizex_widget.bind("<B1-Motion>", resizex)
 resizey_widget.bind("<B1-Motion>", resizey)
 
 root.bind("<FocusIn>", deminimize)
-root.after(10, lambda: set_appwindow(root))
+root.after(100, lambda: set_appwindow(root))
 
 # =====================
 # Chat UI Configuration
