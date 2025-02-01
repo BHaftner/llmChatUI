@@ -4,8 +4,7 @@ import json
 import threading
 import requests
 import ctypes
-import subprocess
-import os
+import re
 
 tk_title = "Chat-Bot"
 
@@ -38,13 +37,22 @@ RED = '#ed093f'
 root.config(bg=DGRAY)
 title_bar = Frame(root, bg=RGRAY, relief='raised', bd=0, highlightthickness=0)
 
-subprocess.Popen(
-    ["ollama", "run", OLLAMA_MODEL],
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
-    stdin=subprocess.DEVNULL,
-    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
-)
+
+def launch_ollama():
+    try:
+        launchResponse = requests.post(
+            'http://localhost:11434/api/generate',
+            json={'model': OLLAMA_MODEL},
+            timeout=100
+        )
+        launchResponse.raise_for_status()
+        print("Model launched successfully.")
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+
+
+threading.Thread(target=launch_ollama, daemon=True).start()
+
 
 def set_appwindow(mainWindow):
     GWL_EXSTYLE = -20
@@ -240,6 +248,7 @@ entry = Entry(
     relief=FLAT, bd=0,
     insertbackground="white"
 )
+entry.focus_set()
 entry_window = canvas.create_window(15, 10, anchor="nw", window=entry)
 
 # =====================
@@ -318,26 +327,49 @@ canvas.bind("<Configure>", update_ui)
 # =====================
 
 response_position = None
-entry.focus_set()
 
 
 def display_response(chunk, done=False):
     """Update chat display with streaming response"""
     global response_position
+    global buffered_chunks  # Buffer to store chunks temporarily
+
+    # Initialize the buffer if it doesn't exist
+    if 'buffered_chunks' not in globals():
+        buffered_chunks = []
+
     T.configure(state=NORMAL)
 
+    # Start the bot's response if it hasn't started yet
     if response_position is None and chunk.strip():
         T.insert(END, "<Sparky> ", "bot")
-        response_position = T.index(INSERT)
+        response_position = T.index(INSERT)  # Save the starting position of the bot's response
+        T.mark_set("response_start", response_position)  # Mark the starting position
 
+    # Add the current chunk to the buffer
     if chunk.strip():
-        T.insert(response_position, chunk, "bot")
-        response_position = T.index(INSERT)
-        T.see(END)
+        buffered_chunks.append(chunk)
 
+    # Process the buffer when done or when we have enough chunks to check
+    if done or len(buffered_chunks) >= 2:
+        # Check if the first two chunks are <think> and </think>
+        if len(buffered_chunks) >= 2 and buffered_chunks[0].strip() == "<think>" and buffered_chunks[1].strip() == "</think>":
+            # Skip inserting <think></think>
+            buffered_chunks = buffered_chunks[2:]  # Remove the first two chunks from the buffer
+        else:
+            # Insert the buffered chunks into the text window at the correct position
+            for buffered_chunk in buffered_chunks:
+                formatted_chunk = buffered_chunk.replace('<think>', '\n<think>\n').replace('</think>', '\n</think>\n')
+                T.insert("response_start", formatted_chunk, "bot")  # Insert at the saved position
+                T.mark_set("response_start", T.index("response_start"))  # Update the mark position
+                T.see(END)  # Scroll to the end
+            buffered_chunks = []  # Clear the buffer after processing
+
+    # Finalize the response if done
     if done:
         response_position = None
         T.insert(END, "\n")
+        T.mark_unset("response_start")  # Remove the mark when done
 
     T.configure(state=DISABLED if not done else NORMAL)
 
