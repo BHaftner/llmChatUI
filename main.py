@@ -347,7 +347,7 @@ def get_ollama_response(message, callback):
     try:
         response = requests.post(
             'http://localhost:11434/api/generate',
-            json={'model': OLLAMA_MODEL, 'prompt': message, 'stream': True},
+            json={'model': OLLAMA_MODEL, 'prompt': message, 'stream': True, 'options': {"temperature": 1.0}, },
             stream=True,
             timeout=120
         )
