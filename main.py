@@ -1,3 +1,7 @@
+# =====================
+# Imports
+# =====================
+
 from tkinter import *
 from ctypes import windll
 import json
@@ -5,11 +9,34 @@ import threading
 import requests
 import ctypes
 
-tk_title = "Chat-Bot"
+# =====================
+# Setup
+# =====================
 
 OLLAMA_MODEL = "deepseek-r1:14b"
 # OLLAMA_MODEL = "llama3.1:8b"
 
+
+def launch_ollama():
+    try:
+        launchResponse = requests.post(
+            'http://localhost:11434/api/generate',
+            json={'model': OLLAMA_MODEL},
+            timeout=100
+        )
+        launchResponse.raise_for_status()
+        print("Model launched successfully.")
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+
+
+threading.Thread(target=launch_ollama, daemon=True).start()
+
+# =====================
+# Window UI Code
+# =====================
+
+tk_title = "Chat-Bot"
 root = Tk()  # Create root window
 root.title(tk_title)
 
@@ -35,22 +62,6 @@ RED = '#ed093f'
 
 root.config(bg=DGRAY)
 title_bar = Frame(root, bg=RGRAY, relief='raised', bd=0, highlightthickness=0)
-
-
-def launch_ollama():
-    try:
-        launchResponse = requests.post(
-            'http://localhost:11434/api/generate',
-            json={'model': OLLAMA_MODEL},
-            timeout=100
-        )
-        launchResponse.raise_for_status()
-        print("Model launched successfully.")
-    except Exception as e:
-        print(f"Exception occurred: {e}")
-
-
-threading.Thread(target=launch_ollama, daemon=True).start()
 
 
 def set_appwindow(mainWindow):
@@ -206,7 +217,7 @@ root.bind("<FocusIn>", deminimize)
 root.after(10, lambda: set_appwindow(root))
 
 # =====================
-# UI Configuration
+# Chat UI Configuration
 # =====================
 
 # Main chat container
