@@ -13,5 +13,4 @@ Ollama needs to be running for the api request to work. Also you need to manuall
 pip install -r requirements.txt --> only external library is requests
 
 # Screenshots
-![image](https://github.com/user-attachments/assets/d97dbeb4-46cd-42cf-92d7-18d28df9073e)
-
+![image](https://github.com/user-attachments/assets/20febb38-7393-40f7-983d-be8cece08a62)
